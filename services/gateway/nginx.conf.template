@@ -1,13 +1,18 @@
 server {
-    listen 8080;
+    listen __LISTEN_PORT__;
     server_name _;
 
     client_max_body_size 100m;
 
+    # Runtime DNS so nginx can start before private upstreams are ready.
+    resolver __RESOLVER__ valid=10s ipv6=on;
+    resolver_timeout 5s;
+
     # Backend API + auth (must share the browser origin with the UI so the
     # httpOnly JWT cookie is same-site).
     location ~ ^/(auth|api|storage|record|workflow|proxy|webhook|api-docs)(/|$) {
-        proxy_pass http://backend:8080;
+        set $backend_upstream __BACKEND_UPSTREAM__;
+        proxy_pass http://$backend_upstream;
         proxy_http_version 1.1;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
@@ -19,7 +24,8 @@ server {
 
     # Socket.IO (recording / run events)
     location /socket.io/ {
-        proxy_pass http://backend:8080;
+        set $backend_upstream __BACKEND_UPSTREAM__;
+        proxy_pass http://$backend_upstream;
         proxy_http_version 1.1;
         proxy_set_header Upgrade $http_upgrade;
         proxy_set_header Connection "upgrade";
@@ -39,7 +45,8 @@ server {
 
     # Static UI + SPA routes
     location / {
-        proxy_pass http://frontend:5173;
+        set $frontend_upstream __FRONTEND_UPSTREAM__;
+        proxy_pass http://$frontend_upstream;
         proxy_http_version 1.1;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;

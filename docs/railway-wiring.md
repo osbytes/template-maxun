@@ -27,7 +27,7 @@ BACKEND_UPSTREAM=${{backend.RAILWAY_PRIVATE_DOMAIN}}:8080
 FRONTEND_UPSTREAM=${{frontend.RAILWAY_PRIVATE_DOMAIN}}:5173
 ```
 
-Keep the public domain target port at `8080`.
+Use `host:port` only (no `http://`). Keep the public domain target port at `8080`.
 
 ### frontend
 
