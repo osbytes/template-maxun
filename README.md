@@ -4,6 +4,8 @@ Railway template scaffolding for [Maxun](https://github.com/getmaxun/maxun), an
 open-source no-code platform for web scraping, crawling, search, and AI data
 extraction. The published Railway marketplace name is **maxun**.
 
+[![Deploy on Railway](https://railway.com/button.svg)](https://railway.com/deploy/lNjLEn?referralCode=ToZEjF&utm_medium=integration&utm_source=template&utm_campaign=generic)
+
 The template runs Maxun as five Railway services:
 
 - `frontend` — Maxun web UI

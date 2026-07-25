@@ -98,10 +98,11 @@ services:
 
   frontend:
     build:
-      context: .
-      dockerfile: services/frontend/Dockerfile
+      context: ./services/frontend
+      dockerfile: Dockerfile
     restart: unless-stopped
     environment:
+      PORT: "5173"
       FRONTEND_PORT: "5173"
       BACKEND_URL: ${BACKEND_URL:-http://localhost:8080}
       VITE_BACKEND_URL: ${VITE_BACKEND_URL:-http://localhost:8080}
