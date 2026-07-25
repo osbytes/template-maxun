@@ -1,0 +1,116 @@
+services:
+  postgres:
+    image: postgres:13-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${DB_NAME:-maxun}
+      POSTGRES_USER: ${DB_USER:-maxun}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-maxun_dev}
+    ports:
+      - "${DB_PORT:-5432}:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-maxun} -d ${DB_NAME:-maxun}"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+
+  minio:
+    image: minio/minio:RELEASE.2025-09-07T16-13-09Z
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ACCESS_KEY:-maxun}
+      MINIO_ROOT_PASSWORD: ${MINIO_SECRET_KEY:-maxun_dev_secret}
+    ports:
+      - "${MINIO_PORT:-9000}:9000"
+      - "${MINIO_CONSOLE_PORT:-9001}:9001"
+    volumes:
+      - minio-data:/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://127.0.0.1:9000/minio/health/live"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+
+  browser:
+    build:
+      context: .
+      dockerfile: services/browser/Dockerfile
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      BROWSER_WS_PORT: "3001"
+      BROWSER_HEALTH_PORT: "3002"
+      BROWSER_WS_HOST: browser
+      PLAYWRIGHT_BROWSERS_PATH: /ms-playwright
+    ports:
+      - "${BROWSER_WS_PORT:-3001}:3001"
+      - "${BROWSER_HEALTH_PORT:-3002}:3002"
+    shm_size: 2gb
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://127.0.0.1:3002/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+
+  backend:
+    build:
+      context: .
+      dockerfile: services/backend/Dockerfile
+    restart: unless-stopped
+    environment:
+      NODE_ENV: ${NODE_ENV:-development}
+      BACKEND_PORT: "8080"
+      BACKEND_URL: ${BACKEND_URL:-http://localhost:8080}
+      PUBLIC_URL: ${PUBLIC_URL:-http://localhost:5173}
+      VITE_PUBLIC_URL: ${VITE_PUBLIC_URL:-http://localhost:5173}
+      JWT_SECRET: ${JWT_SECRET:?set JWT_SECRET in .env}
+      SESSION_SECRET: ${SESSION_SECRET:?set SESSION_SECRET in .env}
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY:?set ENCRYPTION_KEY in .env}
+      DB_NAME: ${DB_NAME:-maxun}
+      DB_USER: ${DB_USER:-maxun}
+      DB_PASSWORD: ${DB_PASSWORD:-maxun_dev}
+      DB_HOST: postgres
+      DB_PORT: "5432"
+      DB_SSL: "false"
+      MINIO_ENDPOINT: minio
+      MINIO_PORT: "9000"
+      MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY:-maxun}
+      MINIO_SECRET_KEY: ${MINIO_SECRET_KEY:-maxun_dev_secret}
+      MINIO_PUBLIC_URL: http://localhost:${MINIO_PORT:-9000}
+      BROWSER_WS_HOST: browser
+      BROWSER_WS_PORT: "3001"
+      BROWSER_HEALTH_PORT: "3002"
+      MAXUN_TELEMETRY: ${MAXUN_TELEMETRY:-true}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+    ports:
+      - "${BACKEND_PORT:-8080}:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+      browser:
+        condition: service_healthy
+
+  frontend:
+    build:
+      context: .
+      dockerfile: services/frontend/Dockerfile
+    restart: unless-stopped
+    environment:
+      FRONTEND_PORT: "5173"
+      BACKEND_URL: ${BACKEND_URL:-http://localhost:8080}
+      VITE_BACKEND_URL: ${VITE_BACKEND_URL:-http://localhost:8080}
+      PUBLIC_URL: ${PUBLIC_URL:-http://localhost:5173}
+    ports:
+      - "${FRONTEND_PORT:-5173}:5173"
+    depends_on:
+      - backend
+
+volumes:
+  postgres-data:
+  minio-data:
