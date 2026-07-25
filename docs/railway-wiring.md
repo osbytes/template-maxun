@@ -3,39 +3,55 @@
 Publish this as a Railway template named `maxun` (not `template-maxun`).
 
 Railway does not deploy `docker-compose.yml` directly. Recreate its topology in
-the template composer with services named exactly `frontend`, `backend`,
-`browser`, `postgres`, and `minio`.
+the template composer with services named exactly `gateway`, `frontend`,
+`backend`, `browser`, `postgres`, and `minio`.
+
+Maxun auth uses an httpOnly cookie. That only works when the browser UI and
+API share one public origin, so **only `gateway` (and MinIO) should be public**.
 
 ## Application services
 
-Use `https://github.com/osbytes/template-maxun` as the source for these three
-services. Set each service's root directory as shown; its local `railway.toml`
-sets the Dockerfile and healthcheck.
+Use `https://github.com/osbytes/template-maxun` as the source for these services.
+Set each service's root directory as shown; its local `railway.toml` sets the
+Dockerfile and healthcheck.
+
+### gateway
+
+- Root directory: `/services/gateway`
+- Public networking: enabled (this is the only app URL users open)
+- Variables:
+
+```text
+PORT=8080
+BACKEND_UPSTREAM=${{backend.RAILWAY_PRIVATE_DOMAIN}}:8080
+FRONTEND_UPSTREAM=${{frontend.RAILWAY_PRIVATE_DOMAIN}}:5173
+```
+
+Keep the public domain target port at `8080`.
 
 ### frontend
 
 - Root directory: `/services/frontend`
-- Public networking: enabled
+- Public networking: **disabled** (reached only via gateway)
 - Variables:
 
 ```text
 PORT=5173
 FRONTEND_PORT=5173
-PUBLIC_URL=https://${{frontend.RAILWAY_PUBLIC_DOMAIN}}
-VITE_PUBLIC_URL=https://${{frontend.RAILWAY_PUBLIC_DOMAIN}}
-BACKEND_URL=https://${{backend.RAILWAY_PUBLIC_DOMAIN}}
-VITE_BACKEND_URL=https://${{backend.RAILWAY_PUBLIC_DOMAIN}}
+PUBLIC_URL=https://${{gateway.RAILWAY_PUBLIC_DOMAIN}}
+VITE_PUBLIC_URL=https://${{gateway.RAILWAY_PUBLIC_DOMAIN}}
+BACKEND_URL=https://${{gateway.RAILWAY_PUBLIC_DOMAIN}}
+VITE_BACKEND_URL=https://${{gateway.RAILWAY_PUBLIC_DOMAIN}}
 ```
 
-Keep the public domain target port at `5173`. The frontend Dockerfile builds
-Maxun's Vite assets from the published source image, then serves them with a
-Node process that binds `0.0.0.0:$PORT`, rewrites the backend URL at request
-time, and exposes `/health` for Railway healthchecks.
+Built from Maxun git tag `v0.0.44` so the UI version chip matches the release.
+The Node server rewrites `__VITE_BACKEND_URL__` at request time and exposes
+`/health`.
 
 ### backend
 
 - Root directory: `/services/backend`
-- Public networking: enabled
+- Public networking: **disabled** (reached only via gateway)
 - Recommended memory: at least 4 GB
 - Variables:
 
@@ -43,9 +59,9 @@ time, and exposes `/health` for Railway healthchecks.
 PORT=8080
 BACKEND_PORT=8080
 NODE_ENV=production
-BACKEND_URL=https://${{backend.RAILWAY_PUBLIC_DOMAIN}}
-PUBLIC_URL=https://${{frontend.RAILWAY_PUBLIC_DOMAIN}}
-VITE_PUBLIC_URL=https://${{frontend.RAILWAY_PUBLIC_DOMAIN}}
+BACKEND_URL=https://${{gateway.RAILWAY_PUBLIC_DOMAIN}}
+PUBLIC_URL=https://${{gateway.RAILWAY_PUBLIC_DOMAIN}}
+VITE_PUBLIC_URL=https://${{gateway.RAILWAY_PUBLIC_DOMAIN}}
 JWT_SECRET=${{secret(64)}}
 SESSION_SECRET=${{secret(64)}}
 ENCRYPTION_KEY=${{secret(64, "abcdef0123456789")}}
@@ -122,13 +138,23 @@ MINIO_ROOT_PASSWORD=${{secret(32)}}
 MinIO must have a public domain because Maxun stores browser-facing screenshot
 URLs. Its console on port `9001` should remain private.
 
+## Auth notes
+
+- Open the **gateway** URL only (not the old frontend/backend domains).
+- Register once at `/register`, then log in at `/login`.
+- Maxun has no built-in “disable registration” flag. After creating your
+  account, block `POST /auth/register` at an edge proxy if you need lockdown.
+- JWT is stored in an httpOnly `token` cookie (not a response body field or
+  `Authorization` header). Same-origin via the gateway is required for that
+  cookie to stick.
+
 ## Deployment notes
 
-- Keep all five services in one Railway environment so reference variables and
+- Keep all six services in one Railway environment so reference variables and
   private DNS resolve correctly.
 - Do not add Redis: Maxun's current Compose file still documents Redis
   variables, but no Redis service or active runtime dependency is present.
-- Frontend and backend public domains must exist before their reference
-  variables resolve.
+- Gateway, frontend, and backend must exist before their reference variables
+  resolve.
 - Maxun creates its screenshot buckets and public-read object policy lazily on
   first use.

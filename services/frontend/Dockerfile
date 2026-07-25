@@ -1,9 +1,24 @@
-# The published maxun-frontend image is a Vite source tree (not a static
-# production build). Compile assets here, then serve with a small Node server
-# that binds Railway's $PORT and exposes /health.
-FROM getmaxun/maxun-frontend:v0.0.44 AS builder
+# Build Maxun frontend from the git tag so package.frontend.json version
+# (shown in the UI) matches the release, then serve with a Railway-aware
+# Node static server.
+FROM node:22-alpine AS builder
+
+RUN apk add --no-cache git
+
+ARG MAXUN_REF=v0.0.44
+WORKDIR /src
+RUN git clone --depth 1 --branch "${MAXUN_REF}" https://github.com/getmaxun/maxun.git .
 
 WORKDIR /app
+RUN cp /src/package.frontend.json ./package.json \
+ && cp /src/index.html ./ \
+ && cp /src/vite.config.js ./ \
+ && cp /src/tsconfig.json ./ \
+ && cp -R /src/src ./src \
+ && cp -R /src/public ./public
+
+RUN npm install --legacy-peer-deps
+
 ENV VITE_BACKEND_URL=__VITE_BACKEND_URL__
 RUN npm run build
 
