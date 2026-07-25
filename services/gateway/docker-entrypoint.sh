@@ -16,6 +16,16 @@ if [ -z "${RESOLVER}" ]; then
   RESOLVER="127.0.0.11"
 fi
 
+# nginx requires bracketed IPv6 literals in the resolver directive.
+case "${RESOLVER}" in
+  *:*)
+    case "${RESOLVER}" in
+      \[*\]) ;;
+      *) RESOLVER="[${RESOLVER}]" ;;
+    esac
+    ;;
+esac
+
 echo "[maxun-gateway] listen=${LISTEN_PORT}"
 echo "[maxun-gateway] backend=${BACKEND_UPSTREAM}"
 echo "[maxun-gateway] frontend=${FRONTEND_UPSTREAM}"
@@ -27,9 +37,6 @@ sed \
   -e "s|__FRONTEND_UPSTREAM__|${FRONTEND_UPSTREAM}|g" \
   -e "s|__RESOLVER__|${RESOLVER}|g" \
   /etc/nginx/templates/default.conf.template > /etc/nginx/conf.d/default.conf
-
-# Avoid the stock default server competing on another port if present.
-rm -f /etc/nginx/conf.d/default.conf.bak
 
 nginx -t
 exec nginx -g "daemon off;"
