@@ -1,12 +1,8 @@
 import http from "node:http";
 import fs from "node:fs";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const BUILD_DIR = fs.existsSync("/app/build")
-  ? "/app/build"
-  : path.join(__dirname, "build");
+const BUILD_DIR = "/app/build";
 
 const PORT = Number(process.env.PORT || process.env.FRONTEND_PORT || 5173);
 const BACKEND =

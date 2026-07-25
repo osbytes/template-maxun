@@ -27,9 +27,10 @@ BACKEND_URL=https://${{backend.RAILWAY_PUBLIC_DOMAIN}}
 VITE_BACKEND_URL=https://${{backend.RAILWAY_PUBLIC_DOMAIN}}
 ```
 
-Keep the public domain target port at `5173`. The frontend Node server binds
-to `0.0.0.0:$PORT`, rewrites the baked-in backend URL at request time, and
-exposes `/health` for Railway healthchecks.
+Keep the public domain target port at `5173`. The frontend Dockerfile builds
+Maxun's Vite assets from the published source image, then serves them with a
+Node process that binds `0.0.0.0:$PORT`, rewrites the backend URL at request
+time, and exposes `/health` for Railway healthchecks.
 
 ### backend
 

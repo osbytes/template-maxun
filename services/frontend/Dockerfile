@@ -1,8 +1,19 @@
-# Serve Maxun's prebuilt frontend with an explicit Railway-aware Node server.
-# This avoids relying on the upstream shell command or globally installed
-# `serve` binary and provides a dedicated health endpoint.
-FROM getmaxun/maxun-frontend:v0.0.44
+# The published maxun-frontend image is a Vite source tree (not a static
+# production build). Compile assets here, then serve with a small Node server
+# that binds Railway's $PORT and exposes /health.
+FROM getmaxun/maxun-frontend:v0.0.44 AS builder
 
-COPY server.mjs /usr/local/lib/maxun-frontend-server.mjs
+WORKDIR /app
+ENV VITE_BACKEND_URL=__VITE_BACKEND_URL__
+RUN npm run build
 
-CMD ["node", "/usr/local/lib/maxun-frontend-server.mjs"]
+FROM node:22-alpine
+
+WORKDIR /app
+COPY --from=builder /app/build ./build
+COPY server.mjs ./server.mjs
+
+ENV NODE_ENV=production
+EXPOSE 5173
+
+CMD ["node", "server.mjs"]
