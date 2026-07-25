@@ -27,8 +27,9 @@ BACKEND_URL=https://${{backend.RAILWAY_PUBLIC_DOMAIN}}
 VITE_BACKEND_URL=https://${{backend.RAILWAY_PUBLIC_DOMAIN}}
 ```
 
-Keep the public domain target port at `5173`. The frontend entrypoint binds
-`serve` to `0.0.0.0:$PORT` and rewrites the baked-in backend URL at boot.
+Keep the public domain target port at `5173`. The frontend Node server binds
+to `0.0.0.0:$PORT`, rewrites the baked-in backend URL at request time, and
+exposes `/health` for Railway healthchecks.
 
 ### backend
 
