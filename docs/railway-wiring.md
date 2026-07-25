@@ -1,5 +1,7 @@
 # Railway template wiring
 
+Publish this as a Railway template named `maxun` (not `template-maxun`).
+
 Railway does not deploy `docker-compose.yml` directly. Recreate its topology in
 the template composer with services named exactly `frontend`, `backend`,
 `browser`, `postgres`, and `minio`.
@@ -101,7 +103,7 @@ POSTGRES_PASSWORD=${{secret(32)}}
 ### minio
 
 - Image: `minio/minio:RELEASE.2025-09-07T16-13-09Z`
-- Start command: `server /data --console-address :9001`
+- Start command: `minio server /data --console-address :9001`
 - Public networking: enabled on port `9000`
 - Volume: mount at `/data`
 - Variables:
