@@ -1,0 +1,11 @@
+upstream_repo: getmaxun/maxun
+version_strategy: release
+pinned:
+  - file: services/backend/Dockerfile
+    kind: from_tag
+  - file: services/frontend/Dockerfile
+    kind: build_arg
+    arg_name: MAXUN_REF
+  - file: services/browser/Dockerfile
+    kind: digest
+# services/gateway/Dockerfile intentionally excluded — pins nginx, an infra dependency.
